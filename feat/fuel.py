@@ -50,5 +50,29 @@ class FuelEstimator:
         cumul = []
         for id, fp in flight_profiles.groupby("id"):
             last_point = fp.query("fc==fc").iloc[-1]
-            cumul.append((id, last_point.s / 1e3, last_point.fc / 1e3))
+            cumul.append((id, last_point.s, last_point.fc))
         return pd.DataFrame.from_records(cumul, columns=["id", "fd", "fc"])
+
+
+def compute_fuel_trip(ac_type, eng_type, mass, flight_profile):
+    return (
+        FuelEstimator(ac_type=ac_type, eng_type=eng_type, mass=mass)
+        .compute_fuel_per_flight(flight_profile)
+        .fc.item()
+    )
+
+
+def compute_fuel_reserve(fpg, mass):
+    return (
+        FuelEstimator(ac_type=fpg.ac_type, eng_type=fpg.eng_type, mass=mass)
+        .compute_fuel_per_flight(fpg.gen_cruise_for_fuel_reserve())
+        .fc.item()
+    )
+
+
+def compute_fuel_alternate(fpg, mass):
+    return (
+        FuelEstimator(ac_type=fpg.ac_type, eng_type=fpg.eng_type, mass=mass)
+        .compute_fuel_per_flight(fpg.gen_flight_for_alternate_fuel())
+        .fc.item()
+    )

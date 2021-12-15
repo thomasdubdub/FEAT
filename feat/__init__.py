@@ -1,4 +1,4 @@
-from .feat import Feat
+from .feat import FeatModelReduction
 from .flight import FlightProfileGenerator
 from .thrust import ThrustEstimator
 from .fuel import FuelEstimator

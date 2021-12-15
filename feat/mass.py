@@ -11,3 +11,7 @@ class MassEstimator:
             self.aircraft["limits"]["OEW"]
             + (self.aircraft["limits"]["MTOW"] - self.aircraft["limits"]["OEW"]) * 0.7
         )
+
+    @property
+    def oew(self):
+        return self.aircraft["limits"]["OEW"]
