@@ -1,6 +1,6 @@
 import numpy as np
 from openap import aero, prop, Thrust
-from .flight import FlightPhaseEstimator
+from .flight import FlightPhaseEstimator, FlightProfiles
 
 
 class ThrustEstimator:
@@ -14,6 +14,13 @@ class ThrustEstimator:
     def __call__(self, flight_profiles):
         assert flight_profiles is not None, "No flight profiles"
 
+        def generate():
+            for fp in flight_profiles:
+                yield self.compute_thrust(fp)
+
+        return FlightProfiles(generate())
+
+    def compute_thrust(self, flight_profile):
         def thr(x):
             v, h, vs = x.v / aero.kts, x.h / aero.ft, x.vs / aero.fpm
             if x.fp == "TO":
@@ -26,10 +33,10 @@ class ThrustEstimator:
                 return self.thrust.descent_idle(tas=v, alt=h)
             return np.NaN
 
-        if "fp" not in flight_profiles.columns:
-            flight_profiles = FlightPhaseEstimator()(flight_profiles)
-        flight_profiles = flight_profiles.assign(
+        if "fp" not in flight_profile.columns:
+            flight_profile = FlightPhaseEstimator()(flight_profile)
+        flight_profile = flight_profile.assign(
             thr=lambda x: x.apply(lambda x: thr(x), axis=1)
         )
-        flight_profiles["thr"] = flight_profiles["thr"].astype("float")
-        return flight_profiles
+        flight_profile["thr"] = flight_profile["thr"].astype("float")
+        return flight_profile
