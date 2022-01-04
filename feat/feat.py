@@ -1,6 +1,5 @@
 from .flight import FlightProfileGenerator
 from .fuel import FuelEstimator
-from .mass import MassEstimator
 import statsmodels.formula.api as sm
 
 
@@ -15,10 +14,7 @@ class FeatModelReduction:
 
     def compute_fuel(self, flight_profiles):
         assert flight_profiles is not None, "No flight profiles"
-        me = MassEstimator(ac_type=self.ac_type)
-        fe = FuelEstimator(
-            ac_type=self.ac_type, eng_tyep=self.eng_type, mass=me.reference_mass
-        )
+        fe = FuelEstimator(ac_type=self.ac_type, eng_tyep=self.eng_type)
         return fe.compute_fuel_per_flight(flight_profiles)
 
     def fit(self, fc):
