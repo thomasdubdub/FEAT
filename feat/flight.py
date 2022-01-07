@@ -21,28 +21,20 @@ class FlightProfiles:
     @classmethod
     def from_df(cls, df):
         dfg = df.groupby("id")
-        return cls((fp for _, fp in dfg), dfg.ngroups)
+        return cls((fp for _, fp in dfg), max(dfg.ngroup()) + 1)
 
     def to_df(self):
         return pd.concat(self.fpg).reset_index(drop=True)
 
 
-def compute_new_altitude(traj, residual_dist, cruise_altitude):
-    max_speed = traj["v"][np.argmax(traj["v"])]
-    time_overshoot = residual_dist * 1e3 / max_speed
-    roc = traj["vs"][np.where((traj["fp"] == "CL") & (traj["vs"] > 0))]
-    min_rocd = roc[np.argmin(roc)]
-    excess_al = time_overshoot / 2 * min_rocd
-    return cruise_altitude - excess_al
-
-
 def gentraj(ac_type, duration, altitude, dt_cr=60, dt_cl=30, dt_de=30):
     trajgen = Generator(ac=ac_type)
     wrap = WRAP(ac=ac_type)
+    data_cl = trajgen.climb(dt=dt_cl, alt_cr=altitude)
     data_cr = trajgen.cruise(
         dt=dt_cr,
         range_cr=2 * wrap.cruise_range()["maximum"] * 1e3,
-        alt_cr=altitude,
+        alt_cr=data_cl["h"][-1] / aero.ft,
     )
     idx = np.abs(data_cr["t"] - duration).argmin() + 1
 
@@ -50,7 +42,6 @@ def gentraj(ac_type, duration, altitude, dt_cr=60, dt_cl=30, dt_de=30):
         (key, value[:idx] if isinstance(value, np.ndarray) else value)
         for key, value in data_cr.items()
     )
-    data_cl = trajgen.climb(dt=dt_cl, alt_cr=data_cr["h"][-1] / aero.ft)
     data_de = trajgen.descent(dt=dt_de, alt_cr=data_cr["h"][-1] / aero.ft)
     return {
         "t": np.concatenate(
@@ -75,12 +66,29 @@ def gentraj(ac_type, duration, altitude, dt_cr=60, dt_cl=30, dt_de=30):
         ),
         "fp": np.concatenate(
             [
-                np.array(["CL"] * len(data_cl["t"])),
+                np.array(["TO"]),
+                np.array(["TO"] * len(np.where(data_cl["seg"] == "TO")[0])),
+                np.array(["CL"] * len(np.where(data_cl["seg"] == "IC")[0])),
+                np.array(["CL"] * len(np.where(data_cl["seg"] == "PRE-CAS")[0])),
+                np.array(["CL"] * len(np.where(data_cl["seg"] == "CAS")[0])),
+                np.array(["CL"] * len(np.where(data_cl["seg"] == "MACH")[0])),
+                np.array(["CR"] * len(np.where(data_cl["seg"] == "CR")[0])),
                 np.array(["CR"] * len(data_cr["t"])),
-                np.array(["DE"] * len(data_de["t"])),
+                np.array(["CR"] * len(np.where(data_de["seg"] == "CR")[0])),
+                np.array(["DE"] * (len(data_de["t"]) - 2)),
+                np.array(["LD"]),
             ]
         ),
     }
+
+
+def compute_new_altitude(traj, residual_dist, cruise_altitude):
+    max_speed = traj["v"][np.argmax(traj["v"])]
+    time_overshoot = residual_dist * 1e3 / max_speed
+    roc = traj["vs"][np.where((traj["fp"] == "CL") & (traj["vs"] > 0))]
+    min_rocd = roc[np.argmin(roc)]
+    excess_al = time_overshoot / 2 * min_rocd
+    return cruise_altitude - excess_al
 
 
 def gen_flight_profile(
