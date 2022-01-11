@@ -1,4 +1,6 @@
-from feat import FlightProfileGenerator, FuelEstimator, MassEstimator
+from .flight import FlightProfileGenerator
+from .fuel import FuelEstimator
+import statsmodels.formula.api as sm
 
 
 class FeatModelReduction:
@@ -6,13 +8,14 @@ class FeatModelReduction:
         self.ac_type = ac_type
         self.eng_type = eng_type
 
-    def fit(self, range_step=100, dt=10):
+    def gen_flight_profiles(self, range_step=100, dt=10):
         fpg = FlightProfileGenerator(ac_type=self.ac_type, eng_type=self.eng_type)
-        flight_profiles = fpg(range_step=range_step, dt=dt)
-        me = MassEstimator(ac_type=self.ac_type)
-        fe = FuelEstimator(
-            ac_type=self.ac_type, eng_tyep=self.eng_type, mass=me.reference_mass
-        )
-        flight_profiles = fe(flight_profiles)
-        # TODO
-        # Quadratic fitting
+        return fpg(range_step=range_step, dt=dt)
+
+    def compute_fuel(self, flight_profiles):
+        assert flight_profiles is not None, "No flight profiles"
+        fe = FuelEstimator(ac_type=self.ac_type, eng_tyep=self.eng_type)
+        return fe.compute_fuel_per_flight(flight_profiles)
+
+    def fit(self, fc):
+        return sm.ols(formula="fc ~ fd + I(fd**2)", data=fc).fit()

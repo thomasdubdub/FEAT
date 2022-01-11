@@ -1,5 +1,3 @@
-from .feat import Feat
-from .flight import FlightProfileGenerator
-from .thrust import ThrustEstimator
+from .feat import FeatModelReduction
+from .flight import FlightProfiles, FlightProfileGenerator
 from .fuel import FuelEstimator
-from .mass import MassEstimator

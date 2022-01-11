@@ -65,3 +65,4 @@ target/
 *.code-workspace
 
 data/
+*.pkl
